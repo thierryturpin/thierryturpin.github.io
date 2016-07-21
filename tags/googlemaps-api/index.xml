@@ -1,0 +1,310 @@
+<?xml version="1.0" encoding="utf-8" standalone="yes" ?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Googlemaps Api on Geocode any data with googlemaps api</title>
+    <link>https://thierryturpin.github.io/tags/googlemaps-api/</link>
+    <description>Recent content in Googlemaps Api on Geocode any data with googlemaps api</description>
+    <generator>Hugo -- gohugo.io</generator>
+    <language>en-us</language>
+    <copyright>2016, Thierry Turpin</copyright>
+    <lastBuildDate>Mon, 18 Jul 2016 21:54:33 +0200</lastBuildDate>
+    <atom:link href="https://thierryturpin.github.io/tags/googlemaps-api/index.xml" rel="self" type="application/rss+xml" />
+    
+    <item>
+      <title>Geocode any data with googlemaps api</title>
+      <link>https://thierryturpin.github.io/post/welcome/</link>
+      <pubDate>Mon, 18 Jul 2016 21:54:33 +0200</pubDate>
+      
+      <guid>https://thierryturpin.github.io/post/welcome/</guid>
+      <description>
+
+&lt;p&gt;The realization of the encoding is done with python and the pandas library, this blog also illustrates how well the pandas library is suited to wrangle any data in a BI or big data landscape.&lt;/p&gt;
+
+&lt;img src=&#34;https://thierryturpin.github.io/media/01_tableau.png&#34; alt=&#34;&#34; class=&#34;pure-img&#34; &gt;
+
+&lt;p&gt;The realization of the encoding is done with python and the pandas library, this blog also illustrates how well the pandas library is suited to wrangle any data in a BI or big data landscape.&lt;/p&gt;
+
+&lt;p&gt;Many BI solutions are able to put a dot on a map, but very few BI solutions are able to identify a small town in Belgium. To solve this there are basically 3 solutions:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;You purchase a GIS add-on / plugin solution, which is specific to your current BI solution&lt;/li&gt;
+&lt;li&gt;You purchase a list with GIS coordinates of a regional level, for instance Belgian zipcodes. Vendors are offering such files per country&lt;/li&gt;
+&lt;li&gt;With some creativity you include the googlemaps geocoding api in your data flow&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;p&gt;I’m personally convinced encoding should be done at data level and not at the level of the BI tool.&lt;/p&gt;
+
+&lt;p&gt;What’s more: the api also cleanse your address data, if there is a misspelling/typo in the address data you will get a corrected version of it. Example at the end of this blog.&lt;/p&gt;
+
+&lt;p&gt;I&amp;rsquo;m using Tableau, a leading data visualization solution which offers me a very good integration with sources like AWS redshift. In the data represented below, you find the town in the second field, for instance “Alveringem”, probably this will not be recognized and classified as “unknown” in Tableau. Same behaviour for other self service BI tools like SAP Lumira or Spotfire.&lt;/p&gt;
+
+&lt;img src=&#34;https://thierryturpin.github.io/media/02_tableau.png&#34; alt=&#34;&#34; class=&#34;pure-img&#34; &gt;
+
+&lt;p&gt;To solve this in Tableau you can refer to external provided geolocation information, you have to point to a directory. In this directory you have to include an ini file which describes your data structure. This is explained in the help of Tableau:&lt;/p&gt;
+
+&lt;img src=&#34;https://thierryturpin.github.io/media/03_tableau.png&#34; alt=&#34;&#34; class=&#34;pure-img&#34; &gt;
+
+&lt;p&gt;The data we want to encode is provided by Eandis under open data and represents energy consumption by locality. This can be found on: &lt;a href=&#34;http://www.eandis.be/nl/open-data-over-de-energiemarkt&#34;&gt;http://www.eandis.be/nl/open-data-over-de-energiemarkt&lt;/a&gt; Instead of filtering out all the localities from my “transactional data set”, I just take a more “master data” approach and take a list of all Belgian localities. An official list of Belgian postal codes can be found on: &lt;a href=&#34;http://www.bpost.be/site/fr/residential/customerservice/search/postal_codes.html&#34;&gt;http://www.bpost.be/site/fr/residential/customerservice/search/postal_codes.html&lt;/a&gt; When the file is downloaded we just simplify the sheet names to for instance: BW instead of “Brabant Wallon”. If we take a closer look to this Excel file we have on every sheet:&lt;/p&gt;
+
+&lt;ul&gt;
+&lt;li&gt;“Code postal” = the zipcode&lt;/li&gt;
+&lt;li&gt;“Localité” = the town/city&lt;/li&gt;
+&lt;li&gt;“Sous-commune” = the sub locality indicator&lt;/li&gt;
+&lt;li&gt;“Rôle linguistique” = the linguistic role, we will not use this field but will add a new field&lt;/li&gt;
+&lt;/ul&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#1
+import googlemaps
+#import unicodedata
+import pandas as pd
+
+#2
+#Local xls file with postal codes
+#Rename the xls sheets
+xls_file = pd.ExcelFile(&#39;C:\\Users\\thierry\\Documents\\DATA\\GEO coding BE\\zipcodes_prov_fr.xls&#39;)
+
+#3
+capitalizer = lambda x: x.upper()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;[4] here you define your googlemaps API key, which you need to register, how to register and what’s the free quota is explained later&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#4
+#Replace with you API key
+gmaps = googlemaps.Client(key=&#39;&#39;)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;[5] to [15] We just make 1 dataframe of the different sheets and we add 2 extra columns:
+- sheet: with the original sheet name
+- lang: with the language which we want to use for the encoding&lt;/p&gt;
+
+&lt;p&gt;The api is able to encode in different languages, to illustrate if we would just encode the postal code 1000:&lt;/p&gt;
+
+&lt;table&gt;
+&lt;thead&gt;
+&lt;tr&gt;
+&lt;th&gt;Encoding language&lt;/th&gt;
+&lt;th&gt;City encoded result&lt;/th&gt;
+&lt;/tr&gt;
+&lt;/thead&gt;
+
+&lt;tbody&gt;
+&lt;tr&gt;
+&lt;td&gt;EN&lt;/td&gt;
+&lt;td&gt;Brussels&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;NL&lt;/td&gt;
+&lt;td&gt;Brussel&lt;/td&gt;
+&lt;/tr&gt;
+
+&lt;tr&gt;
+&lt;td&gt;FR&lt;/td&gt;
+&lt;td&gt;Bruxelles&lt;/td&gt;
+&lt;/tr&gt;
+&lt;/tbody&gt;
+&lt;/table&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#5
+table_all = xls_file.parse(&#39;BW&#39;)
+table_all[&#39;sheet&#39;] = &#39;BW&#39;
+table_all[&#39;lang&#39;] = &#39;FR&#39;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#15
+table_sheet = xls_file.parse(&#39;OV&#39;)
+table_sheet[&#39;sheet&#39;] = &#39;OV&#39;
+table_sheet[&#39;lang&#39;] = &#39;NL&#39;
+table_all = table_all.append(table_sheet,ignore_index=True)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;There’s also a sheet with special postal codes, we will not encode them.&lt;/p&gt;
+
+&lt;p&gt;[16] We call the helper function to apply an uppercase to the column “Sous-commune”&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#16
+table_all[&#39;Sous-commune&#39;] = table_all[&#39;Sous-commune&#39;].map(capitalizer)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;[17] We quickly verify the header of our dataframe&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#17
+table_all.head(n=5)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;[18] And by using tail, we just can verify the last lines of the dataframe&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#18
+table_all.tail(n=5)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;[21] Let’s build the geo_result_frame, to do so:
+- we iterate by using itertuples() over the table_all dataframe
+- next we verify if this is a sublocality, if this is the case we provide also the sublocality for the encoding, if not the postal code is sufficient
+- from there we call the get_city_geocode and we also pass the language we want to use for the encoding xls_row[7]
+- if the locality is not resulted from the encoding service, we just take it back from the input&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#21
+geo_result = []
+for xls_row in table_all.itertuples():
+    if str(xls_row[4]) == &amp;quot;OUI&amp;quot;:
+      city_be = (str(xls_row[1]), xls_row[2], &#39;Belgique&#39;)
+    else:
+      city_be = (str(xls_row[1]), &#39;Belgique&#39;)
+    city_be = &amp;quot; &amp;quot;.join(city_be)
+    print city_be
+    geocoded = get_city_geocode(city_be,str(xls_row[7]))
+    if isinstance(geocoded, dict):
+      if not &#39;locality&#39; in geocoded:
+        geocoded[&#39;locality&#39;] = xls_row[2]
+      geo_result.append(geocoded)
+        
+geo_result_frame = pd.DataFrame(geo_result)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;[19] The definition of the get_city_geocode function, we pass the encoding service an extra parameter with region =”BE”
+And we also verify the result we get is certainly located in Belgium&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#19
+def get_city_geocode(in_postal_city,in_language):
+    try:
+      geocode_result = gmaps.geocode(in_postal_city,language=in_language,region=&amp;quot;BE&amp;quot;)
+      for address_components in geocode_result[0][&#39;address_components&#39;]:
+        if address_components[&#39;types&#39;][0] == &#39;country&#39; and address_components[&#39;short_name&#39;] == &#39;BE&#39;:            
+          return get_geo_info(geocode_result)      
+          break
+    except:
+      print &amp;quot;  Exception&amp;quot;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;[20] We take the elements in which we are interested in from the encoding service and build a new “flatten” dictionary of it: geo_result. This will be a line of the final dataframe / Excel file&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#20
+def get_geo_info(in_geocode_result):
+  geo_result = {}
+  for address_components in in_geocode_result[0][&#39;address_components&#39;]:
+    if address_components[&#39;types&#39;][0] == &#39;country&#39;:
+      geo_result[&#39;country&#39;] = address_components[&#39;short_name&#39;]
+    if address_components[&#39;types&#39;][0] == &#39;postal_code&#39;: 
+      geo_result[&#39;postal_code&#39;] = address_components[&#39;short_name&#39;]        
+    if address_components[&#39;types&#39;][0] == &#39;locality&#39;: 
+      geo_result[&#39;locality&#39;] = address_components[&#39;short_name&#39;]        
+    if address_components[&#39;types&#39;][0] == &#39;political&#39;: 
+      geo_result[&#39;political&#39;] = address_components[&#39;short_name&#39;]        
+    if address_components[&#39;types&#39;][0] == &#39;administrative_area_level_1&#39;:
+      geo_result[&#39;administrative_area_level_1&#39;] = address_components[&#39;short_name&#39;]        
+    if address_components[&#39;types&#39;][0] == &#39;administrative_area_level_2&#39;:   
+      geo_result[&#39;administrative_area_level_2&#39;] = address_components[&#39;short_name&#39;]
+    geo_result[&#39;place_id&#39;] = in_geocode_result[0][&#39;place_id&#39;]
+    geo_result[&#39;formatted_address&#39;] = in_geocode_result[0][&#39;formatted_address&#39;]
+    geo_result[&#39;lat&#39;] = in_geocode_result[0][&#39;geometry&#39;][&#39;location&#39;][&#39;lat&#39;]
+    geo_result[&#39;lng&#39;] = in_geocode_result[0][&#39;geometry&#39;][&#39;location&#39;][&#39;lng&#39;]
+  return geo_result
+#    print geo_result  
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;[5’] to [8’] small example from another notebook to illustrate the result structure&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#5&#39;
+geocode_result = gmaps.geocode(&#39;5580 Lessive Belgique&#39;,language=&amp;quot;FR&amp;quot;,region=&amp;quot;BE&amp;quot;)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#6&#39;
+type(geocode_result)
+len(geocode_result)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#7&#39;
+print geocode_result[0]
+&#39;&#39;&#39;
+{u&#39;geometry&#39;: {u&#39;location&#39;: {u&#39;lat&#39;: 50.13921, u&#39;lng&#39;: 5.14662}, u&#39;viewport&#39;: {u&#39;northeast&#39;: {u&#39;lat&#39;: 50.1463609, u&#39;lng&#39;: 5.1626274}, u&#39;southwest&#39;: {u&#39;lat&#39;: 50.132058, u&#39;lng&#39;: 5.1306126}}, u&#39;location_type&#39;: u&#39;APPROXIMATE&#39;}, u&#39;address_components&#39;: [{u&#39;long_name&#39;: u&#39;Lessive&#39;, u&#39;types&#39;: [u&#39;locality&#39;, u&#39;political&#39;], u&#39;short_name&#39;: u&#39;Lessive&#39;},{u&#39;long_name&#39;: u&#39;Namur&#39;, u&#39;types&#39;: [u&#39;administrative_area_level_2&#39;, u&#39;political&#39;], u&#39;short_name&#39;: u&#39;NA&#39;}, {u&#39;long_name&#39;: u&#39;R\xe9gion wallonne&#39;, u&#39;types&#39;: [u&#39;administrative_area_level_1&#39;, u&#39;political&#39;], u&#39;short_name&#39;: u&#39;R\xe9gion wallonne&#39;}, {u&#39;long_name&#39;: u&#39;Belgique&#39;, u&#39;types&#39;: [u&#39;country&#39;, u&#39;political&#39;], u&#39;short_name&#39;: u&#39;BE&#39;}, {u&#39;long_name&#39;: u&#39;5580&#39;, u&#39;types&#39;: [u&#39;postal_code&#39;], u&#39;short_name&#39;: u&#39;5580&#39;}], u&#39;place_id&#39;: u&#39;ChIJ4S8RLMXOwUcRV2qRVQrQUZw&#39;, u&#39;formatted_address&#39;: u&#39;5580 Lessive, Belgique&#39;, u&#39;types&#39;: [u&#39;locality&#39;, u&#39;political&#39;]}
+&#39;&#39;&#39;
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#8&#39;
+print geocode_result[0][&#39;types&#39;]
+print str(geocode_result[0][&#39;geometry&#39;][&#39;location&#39;][&#39;lat&#39;]) + &amp;quot; &amp;quot; + str(geocode_result[0][&#39;geometry&#39;][&#39;location&#39;][&#39;lng&#39;])
+for address_components in geocode_result[0][&#39;address_components&#39;]:
+    print address_components
+
+#[u&#39;locality&#39;, u&#39;political&#39;]
+#50.13921 5.14662
+#{u&#39;long_name&#39;: u&#39;Lessive&#39;, u&#39;types&#39;: [u&#39;locality&#39;, u&#39;political&#39;], u&#39;short_name&#39;: u&#39;Lessive&#39;}
+#{u&#39;long_name&#39;: u&#39;Namur&#39;, u&#39;types&#39;: [u&#39;administrative_area_level_2&#39;, u&#39;political&#39;], u&#39;short_name&#39;: u&#39;NA&#39;}
+#{u&#39;long_name&#39;: u&#39;R\xe9gion wallonne&#39;, u&#39;types&#39;: [u&#39;administrative_area_level_1&#39;, u&#39;political&#39;], u&#39;short_name&#39;: u&#39;R\xe9gion wallonne&#39;}
+#{u&#39;long_name&#39;: u&#39;Belgique&#39;, u&#39;types&#39;: [u&#39;country&#39;, u&#39;political&#39;], u&#39;short_name&#39;: u&#39;BE&#39;}
+#{u&#39;long_name&#39;: u&#39;5580&#39;, u&#39;types&#39;: [u&#39;postal_code&#39;], u&#39;short_name&#39;: u&#39;5580&#39;}
+
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;[22] We just can save the dataframe to a new Excel file&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#22
+#Save the result to local file
+writer = pd.ExcelWriter(&#39;C:\\Users\\thierry\\Documents\\DATA\\GEO coding BE\\zipcodes_prov_fr_ALL.xlsx&#39;)
+geo_result_frame.to_excel(writer,&#39;ALL&#39;)
+writer.save()
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;For those that just  want to have the Excel file, this can be obtained by e-mail.&lt;/p&gt;
+
+&lt;img src=&#34;https://thierryturpin.github.io/media/17_xls.png&#34; alt=&#34;&#34; class=&#34;pure-img&#34; &gt;
+
+&lt;p&gt;That’s it, we just encoded all the localities of Belgium at “data level” and it’s ready to be used by Tableau.
+In a more industrialized landscape this encoding service would be a part of your ETL flow. Represented in a small diagram:&lt;/p&gt;
+
+&lt;img src=&#34;https://thierryturpin.github.io/media/18_dia.png&#34; alt=&#34;&#34; class=&#34;pure-img&#34; &gt;
+
+&lt;h3 id=&#34;how-to-register-you-google-api-key&#34;&gt;How to register you google API key&lt;/h3&gt;
+
+&lt;p&gt;&lt;a href=&#34;https://console.developers.google.com&#34;&gt;https://console.developers.google.com&lt;/a&gt;
+Like indicated below, the number of free request by day is limited to 2500 requests.
+At the opening of your account you get 300 USD credit, this allows you to encode a couple of addresses.
+Furthermore the pricing of the API is very low, it only costs 0,5 USD to encode 1000 addresses.&lt;/p&gt;
+
+&lt;img src=&#34;https://thierryturpin.github.io/media/19_web.png&#34; alt=&#34;&#34; class=&#34;pure-img&#34; &gt;
+
+&lt;h3 id=&#34;address-cleansing-from-a-customer-demo-we-recently-did&#34;&gt;Address cleansing, from a customer demo we recently did&lt;/h3&gt;
+
+&lt;p&gt;[6] we just define a couple of variables, note in addr2 we just skip the last two characters of the street name&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#6 Geocoding an address
+addr1 = &#39;4 rue Lou Hemmer, L-1748 Luxembourg, Grand Duchy of Luxembourg&#39; # A partial match
+addr1c = &#39;4 Rue Lou Hemmer, 1748 Findel, Luxembourg&#39; # A complete match
+addr2 = &#39;4 rue Lou Hemm, L-1748 Luxembourg, Grand Duchy of Luxembourg&#39; # A partial match
+geocode_result = gmaps.geocode(addr2)
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;p&gt;[9] We see it’s a partial match on street address, and the formatted address is “Rue Lou Hemmer”&lt;/p&gt;
+
+&lt;pre&gt;&lt;code class=&#34;language-python&#34;&gt;#9 
+print &amp;quot;lat Lng: &amp;quot; + str(geocode_result[0][&#39;geometry&#39;][&#39;location&#39;][&#39;lat&#39;]) + &amp;quot; &amp;quot; + str(geocode_result[0][&#39;geometry&#39;][&#39;location&#39;][&#39;lng&#39;])
+print &amp;quot;Formatted address: &amp;quot; + geocode_result[0][&#39;formatted_address&#39;]
+print &amp;quot;Place id: &amp;quot; + geocode_result[0][&#39;place_id&#39;]
+if &#39;partial_match&#39; in geocode_result[0]: 
+    print &amp;quot;A partial match for: &amp;quot; + geocode_result[0][&#39;types&#39;][0] 
+else:
+    print &amp;quot;A complete match&amp;quot;
+
+#lat Lng: 49.6329143 6.2091053
+#Formatted address: 4 Rue Lou Hemmer, 1748 Findel, Luxembourg
+#Place id: ChIJO6fO8LtFlUcRmZCiRpYuV9g
+#A partial match for: street_address
+&lt;/code&gt;&lt;/pre&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;The complete ipython notebook can be found &lt;a href=&#34;https://github.com/thierryturpin/thierryturpin.github.io/blob/master/Googlemaps_read_xls.ipynb&#34;&gt;here&lt;/a&gt;&lt;/p&gt;
+
+&lt;p&gt;More about the API can also be found on github
+&lt;a href=&#34;https://github.com/googlemaps/google-maps-services-python/blob/master/README.md&#34;&gt;https://github.com/googlemaps/google-maps-services-python/blob/master/README.md&lt;/a&gt;&lt;/p&gt;
+
+&lt;hr /&gt;
+
+&lt;p&gt;Thierry&lt;/p&gt;
+</description>
+    </item>
+    
+  </channel>
+</rss>
