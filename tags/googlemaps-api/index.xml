@@ -18,25 +18,23 @@
       <guid>https://thierryturpin.github.io/post/welcome/</guid>
       <description>
 
-&lt;p&gt;The realization of the encoding is done with python and the pandas library, this blog also illustrates how well the pandas library is suited to wrangle any data in a BI or big data landscape.&lt;/p&gt;
-
 &lt;p&gt;&lt;script type=&#39;text/javascript&#39; src=&#39;https://public.tableau.com/javascripts/api/viz_v1.js&#39;&gt;&lt;/script&gt;&lt;div class=&#39;tableauPlaceholder&#39; style=&#39;width: 1004px; height: 869px;&#39;&gt;&lt;noscript&gt;&lt;a href=&#39;#&#39;&gt;&lt;img alt=&#39;2014 Benaderend Verbruik &#39; src=&#39;https:&amp;#47;&amp;#47;public.tableau.com&amp;#47;static&amp;#47;images&amp;#47;Ea&amp;#47;EandisGEO&amp;#47;2014BenaderendVerbruik&amp;#47;1_rss.png&#39; style=&#39;border: none&#39; /&gt;&lt;/a&gt;&lt;/noscript&gt;&lt;object class=&#39;tableauViz&#39; width=&#39;1004&#39; height=&#39;869&#39; style=&#39;display:none;&#39;&gt;&lt;param name=&#39;host_url&#39; value=&#39;https%3A%2F%2Fpublic.tableau.com%2F&#39; /&gt; &lt;param name=&#39;site_root&#39; value=&#39;&#39; /&gt;&lt;param name=&#39;name&#39; value=&#39;EandisGEO&amp;#47;2014BenaderendVerbruik&#39; /&gt;&lt;param name=&#39;tabs&#39; value=&#39;no&#39; /&gt;&lt;param name=&#39;toolbar&#39; value=&#39;yes&#39; /&gt;&lt;param name=&#39;static_image&#39; value=&#39;https:&amp;#47;&amp;#47;public.tableau.com&amp;#47;static&amp;#47;images&amp;#47;Ea&amp;#47;EandisGEO&amp;#47;2014BenaderendVerbruik&amp;#47;1.png&#39; /&gt; &lt;param name=&#39;animate_transition&#39; value=&#39;yes&#39; /&gt;&lt;param name=&#39;display_static_image&#39; value=&#39;yes&#39; /&gt;&lt;param name=&#39;display_spinner&#39; value=&#39;yes&#39; /&gt;&lt;param name=&#39;display_overlay&#39; value=&#39;yes&#39; /&gt;&lt;param name=&#39;display_count&#39; value=&#39;yes&#39; /&gt;&lt;param name=&#39;showTabs&#39; value=&#39;y&#39; /&gt;&lt;/object&gt;&lt;/div&gt;&lt;/p&gt;
 
-&lt;p&gt;The realization of the encoding is done with python and the pandas library, this blog also illustrates how well the pandas library is suited to wrangle any data in a BI or big data landscape.&lt;/p&gt;
-
-&lt;p&gt;Many BI solutions are able to put a dot on a map, but very few BI solutions are able to identify a small town in Belgium. To solve this there are basically 3 solutions:&lt;/p&gt;
+&lt;p&gt;Data visualization and geo-reporting are hot topics nowadays in the BI and analytics world. They can bring significant value to an organization, if executed correctly. A lot of companies struggle with implementing geo-reporting, as automatically geo-coding addresses often poses a big challenge.
+To solve this there are basically 3 solutions:&lt;/p&gt;
 
 &lt;ul&gt;
 &lt;li&gt;You purchase a GIS add-on / plugin solution, which is specific to your current BI solution&lt;/li&gt;
 &lt;li&gt;You purchase a list with GIS coordinates of a regional level, for instance Belgian zipcodes. Vendors are offering such files per country&lt;/li&gt;
-&lt;li&gt;With some creativity you include the googlemaps geocoding api in your data flow&lt;/li&gt;
+&lt;li&gt;With some creativity you include the googlemaps geocoding api in your data flow
+&lt;br /&gt;&lt;/li&gt;
 &lt;/ul&gt;
 
-&lt;p&gt;I’m personally convinced encoding should be done at data level and not at the level of the BI tool.&lt;/p&gt;
+&lt;p&gt;In this blog I will explain how this automatic geo-coding of addresses can be created on data level, which afterwards can be used by a BI-tool of your choice. This is in my belief the best way forward. What’s more: the API also cleanses your address data, so if there is a misspelling/typo in the address data you will get a corrected version of it. You can find an example of this at the end of this blog.&lt;/p&gt;
 
-&lt;p&gt;What’s more: the api also cleanse your address data, if there is a misspelling/typo in the address data you will get a corrected version of it. Example at the end of this blog.&lt;/p&gt;
+&lt;p&gt;I’m using Tableau, a leading data visualization solution which offers me a very good integration with sources like AWS redshift. In the data represented below, you can find the town of “Alveringem” in the list. Tableau will not recognize this and will classify it as “Unknown”. The same behaviour is to be expected with other self-service BI tools like SAP Lumira or Spotfire. We will create a front-end independent solution that will solve this problem.&lt;/p&gt;
 
-&lt;p&gt;I&amp;rsquo;m using Tableau, a leading data visualization solution which offers me a very good integration with sources like AWS redshift. In the data represented below, you find the town in the second field, for instance “Alveringem”, probably this will not be recognized and classified as “unknown” in Tableau. Same behaviour for other self service BI tools like SAP Lumira or Spotfire.&lt;/p&gt;
+&lt;p&gt;The realization of the encoding is done with python and the pandas library, this blog also illustrates how well the pandas library is suited to wrangle any data in a BI or big data landscape.&lt;/p&gt;
 
 &lt;img src=&#34;https://thierryturpin.github.io/media/02_tableau.png&#34; alt=&#34;&#34; class=&#34;pure-img&#34; &gt;
 
